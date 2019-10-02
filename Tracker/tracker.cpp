@@ -9,28 +9,11 @@
 #include <fstream>
 #include <algorithm>
 
-/*******
-
-/*-------------------------------------
-| POSIX header files              |
--------------------------------------
-#include <unistd.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>  //has getaddrinfo()
-#include <arpa/inet.h>  //for inet_pton
-
-*******/
-
 /*-------------------------------------
 |   Vani-chan's header files          |
 -------------------------------------*/
 
-#include "vaninet.hpp"
+#include "../vaninet.hpp"      //POSIX headers are in here
 
 using namespace std;
 
@@ -40,12 +23,21 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+    /**
+     * Data structs for tracking data
+     */
+
     map<string, vector<string>> fileToPeerMap;  //which peers have which files
     map<string, vector<string>> peerToGroupMap;     //which groups a particular peer is present in
     //make another map for usernames and passwords?
 
+
+    /**
+     * Setting up tracker
+     */
+
     const char *trackerInfoFile = argv[1];
-    char* trackerNum = argv[2];
+    string trackerNum = argv[2];
 
     const char *trackersIP;
     unsigned int trackersPort;
@@ -55,15 +47,22 @@ int main(int argc, char** argv)
     ifstream fin;  string line;
     fin.open(trackerInfoFile);
 
+    cout<<"Opened tracker info. . . \n";
     int i = 0;
     while(fin)
     {
         getline(fin, line);
         int posOfSpace = line.find(" ");
-        trackerInfo[i] = make_pair(line.substr(0,posOfSpace), line.substr(posOfSpace+1));   //there are posOfSpace characters before the space
+        string s1 = line.substr(0,posOfSpace);
+        //cout<<s1<<" \n";
+        string s2 = line.substr(posOfSpace+1);
+        //cout<<s1<<" "<<s2<<" \n";
+        trackerInfo.push_back(make_pair(s1, s2));   //there are posOfSpace characters before the space
         ++i;
     }
 
+    cout<<"Read tracker info. . . \n";
+    cout<<"trackerNum is "<<trackerNum<<"\n";
     if(trackerNum == "1")
     {
         trackersIP = trackerInfo[0].first.c_str();
@@ -74,27 +73,52 @@ int main(int argc, char** argv)
         trackersPort = stoi(trackerInfo[1].second);
     }
 
+    cout<<"Extracted info from tracker_info...\n";
+
     int trackerSocket, peerHandlingSocket;
 
-    trackerSocket = setUpSocket(trackersIP, trackersPort);
+    trackerSocket = setUpSocket(trackersIP, trackersPort).first;
+    //fcntl(trackerSocket, F_SETFL, O_NONBLOCK);    <-- This is to make the socket non-blocking
+
+    cout<<"Finished setting up tracker socket...\n";
 
     if(listen(trackerSocket, 10) == -1)
     {
-        perror("Couldn't listen on tracker port\n");
+        perror("Couldn't listen on tracker port");
     }
 
     struct sockaddr_storage incomingAddress;
     socklen_t incomingAddrSize = sizeof(incomingAddress);
 
+    /**
+     * The tracker now sits and waits to service peers(clients)
+     */
+
     while(true)
     {
-        peerHandlingSocket = accept(trackerSocket, (struct sockaddr*)&incomingAddress, &incomingAddrSize);
+        cout<<"Tracker waiting for connections . . . \n";
+        cout<<"tracker IP = "<<trackersIP<<" tracker port = "<<trackersPort<<"\n";
+        peerHandlingSocket = accept(trackerSocket, (struct sockaddr*)&incomingAddress, (socklen_t *)&incomingAddrSize);
         if(peerHandlingSocket == -1)
         {
-            perror("Couldn't get a new socket descriptor for handling new request\n");
+            perror("Couldn't get a new socket descriptor for handling new request");
         }
-        cout<<"Waiting for connections . . . \n";
+
+        char *buffer = (char*)malloc(sizeof(char)*16);
+
+        int recvLength = 16;
+        cout<<"Going to receive data now...\n";
+
+        cout<<"Got from client: ";
+        while(recvLength > 0)
+        {
+            int bytesRecvd = recv(peerHandlingSocket, buffer, sizeof(buffer), 0);
+            cout<<buffer;
+            recvLength -= bytesRecvd;
+        }
+        cout<<"\n";
     }
 
+    close(trackerSocket);
     return 0;
 }

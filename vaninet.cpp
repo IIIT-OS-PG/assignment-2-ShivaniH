@@ -1,12 +1,18 @@
+#include <algorithm>
+#include <vector>
+#include <iostream>
+#include <map>
+
 #include "vaninet.hpp"
 
+using namespace std;
 
-int setUpSocket(const char *IP, int port)
+pair<int, struct sockaddr_in> setUpSocket(const char *IP, int port)
 {
-    struct sockaddr_in serverAddress;
+    struct sockaddr_in address;
 
-    serverAddress.sin_family = AF_UNSPEC;
-    inet_pton(AF_INET, IP, &(serverAddress.sin_addr));
+    address.sin_family = AF_INET;
+    inet_pton(AF_INET, IP, &(address.sin_addr));
 
     if(port <= 1024)
     {
@@ -14,21 +20,22 @@ int setUpSocket(const char *IP, int port)
         perror("Assigning another port . . . ");
         port = 0;   //So that the system selects the lowest unused port automatically
     }
-    serverAddress.sin_port = htons(port);
+    address.sin_port = htons(port);
 
-    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if(serverSocket == -1)
+    int socketRet = socket(AF_INET, SOCK_STREAM, 0);
+    if(socketRet == -1)
     {
-        perror("Could not create server socket!\n");
+        perror("Could not create socket!\n");
         exit(1);
     }
 
-    int bindSuccess = bind(serverSocket, (const sockaddr *)&serverAddress, sizeof(sockaddr_in));
+    int bindSuccess = bind(socketRet, (const sockaddr *)&address, sizeof(sockaddr_in));
     if(bindSuccess < -1)
     {
         perror("Could not bind socket to specified address!\n");
         exit(1);
     }
 
-    return serverSocket;
+    pair<int, struct sockaddr_in> retPair = make_pair(socketRet, address);
+    return retPair;
 }

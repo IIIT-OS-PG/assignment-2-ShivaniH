@@ -18,5 +18,4 @@
 |   Vani-chan's header files          |
 -------------------------------------*/
 
-
-int setUpSocket(const char *trackersIP, int trackerNum);
+std::pair<int, struct sockaddr_in> setUpSocket(const char *trackersIP, int trackerNum);

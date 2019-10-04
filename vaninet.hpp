@@ -19,3 +19,7 @@
 -------------------------------------*/
 
 std::pair<int, struct sockaddr_in> setUpSocket(const char *trackersIP, int trackerNum);
+
+int sendData(char *buffer, long long int bufferSize, int sendersSocket);
+
+char* receiveData(long long int bufferSize, int receiversSocket);

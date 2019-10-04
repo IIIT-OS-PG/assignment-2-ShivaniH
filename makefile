@@ -2,17 +2,21 @@ CXX = g++
 
 default: tracker peer
 
-tracker: tracker.o vaninet.o 
-	$(CXX) -o tracker tracker.o vaninet.o 
 
-tracker.o: Tracker/tracker.cpp vaninet.cpp vaninet.hpp
-	$(CXX) -c Tracker/tracker.cpp vaninet.cpp
+tracker.o: Tracker/tracker.cpp vaninet.cpp vaninet.hpp filehandling.cpp filehandling.hpp
+	$(CXX) -c Tracker/tracker.cpp vaninet.cpp filehandling.cpp
+	
+tracker: Tracker/tracker.o vaninet.o filehandling.o
+	$(CXX) -o Tracker/tracker Tracker/tracker.o vaninet.o filehandling.o
 
-peer: peer.o vaninet.o
-	$(CXX) -o peer peer.o vaninet.o
+peer: Peer/peer.o vaninet.o filehandling.o
+	$(CXX) -o Peer/peer Peer/peer.o vaninet.o filehandling.o -lssl -lcrypto
 
-peer.o: Peer/peer.cpp vaninet.cpp vaninet.hpp
+peer.o: Peer/peer.cpp vaninet.cpp vaninet.hpp filehandling.cpp filehandling.hpp
 	$(CXX) -c Peer/peer.cpp
 
 vaninet.o: vaninet.cpp
 	$(CXX) -c vaninet.cpp
+
+filehandling.o: filehandling.cpp
+	$(CXX) -c filehandling.cpp

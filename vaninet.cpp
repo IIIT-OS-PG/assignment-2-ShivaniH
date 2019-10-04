@@ -7,6 +7,10 @@
 
 using namespace std;
 
+/**
+ * SETTING UP SOCKET
+ */
+
 pair<int, struct sockaddr_in> setUpSocket(const char *IP, int port)
 {
     struct sockaddr_in address;
@@ -38,4 +42,60 @@ pair<int, struct sockaddr_in> setUpSocket(const char *IP, int port)
 
     pair<int, struct sockaddr_in> retPair = make_pair(socketRet, address);
     return retPair;
+}
+
+/** 
+ * SEND DATA
+ */
+
+int sendData(char *buffer, long long int sendLength, int sendersSocket)
+{
+    //cout<<"send length is "<<sendLength<<"\n";
+    char *ptrToBuffer = buffer;
+
+    //cout<<"sending these bytes \n"<<buffer<<"\n";
+    long long int bytesSent;
+    while(sendLength > 0)
+    {
+        bytesSent = send(sendersSocket, ptrToBuffer, sizeof(ptrToBuffer), 0);
+        if(bytesSent < 1)
+        {
+            return(-1);  
+        }
+        //cout<<ptrToBuffer<<" bytes sent\n";
+        //cout<<bytesSent<<" bytes were sent\n";
+        ptrToBuffer += bytesSent;
+        sendLength -= bytesSent; 
+    }
+
+    return 0;
+}
+
+/**
+ * RECEIVE DATA
+ */ 
+
+char* receiveData(long long int bufferSize, int receiversSocket)
+{
+    char *bufferStorage = (char*)malloc(sizeof(char)*bufferSize);
+    long long int bytesRecvd = 1;     //just an initial value
+    long long int totalBytes = 0;
+
+    char *buffer = bufferStorage;
+
+    while(bytesRecvd > 0 && totalBytes <= bufferSize)
+    {
+        bytesRecvd = recv(receiversSocket, buffer, sizeof(buffer), 0);
+        if(bytesRecvd == -1)
+        {
+            perror("Error while receiving data ");
+            exit(1);
+        }
+        buffer += bytesRecvd;
+        //cout<<"got "<<bytesRecvd<<" bytes\n";
+        totalBytes += bytesRecvd;
+        //cout<<"received these bytes: "<<bufferStorage<<"\n";
+    }
+
+    return bufferStorage;
 }

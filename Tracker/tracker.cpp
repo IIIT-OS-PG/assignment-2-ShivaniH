@@ -8,6 +8,7 @@
 #include <map>
 #include <fstream>
 #include <algorithm>
+#include <string.h>
 
 /*-------------------------------------
 |   Vani-chan's header files          |
@@ -54,12 +55,12 @@ int main(int argc, char** argv)
         getline(fin, line);
         int posOfSpace = line.find(" ");
         string s1 = line.substr(0,posOfSpace);
-        //cout<<s1<<" \n";
         string s2 = line.substr(posOfSpace+1);
-        //cout<<s1<<" "<<s2<<" \n";
         trackerInfo.push_back(make_pair(s1, s2));   //there are posOfSpace characters before the space
         ++i;
     }
+
+    fin.close();
 
     cout<<"Read tracker info. . . \n";
     cout<<"trackerNum is "<<trackerNum<<"\n";
@@ -94,6 +95,16 @@ int main(int argc, char** argv)
      * The tracker now sits and waits to service peers(clients)
      */
 
+    char trackerBuffer[2048];   //2KB size buffer for storing requests from peers(clients)
+    int bufferSize = 2048;
+
+    /**
+     * Get details of a file from a peer(client) -- Peer shares a file
+     */
+
+    long long int bigValue = numeric_limits<long long int>::max();
+    char *fileDetails = (char*)malloc(sizeof(char)*bigValue);
+
     while(true)
     {
         cout<<"Tracker waiting for connections . . . \n";
@@ -102,21 +113,21 @@ int main(int argc, char** argv)
         if(peerHandlingSocket == -1)
         {
             perror("Couldn't get a new socket descriptor for handling new request");
+            exit(1);
         }
 
-        char *buffer = (char*)malloc(sizeof(char)*16);
+        //TODO: Make a separate thread here to receive and handle requests
 
-        int recvLength = 16;
+        //The buffersize that you send to the receiveData function depends on what kind of request you're handling
+
+        /*
+        UNCOMMENT THIS LATER
         cout<<"Going to receive data now...\n";
 
-        cout<<"Got from client: ";
-        while(recvLength > 0)
-        {
-            int bytesRecvd = recv(peerHandlingSocket, buffer, sizeof(buffer), 0);
-            cout<<buffer;
-            recvLength -= bytesRecvd;
-        }
-        cout<<"\n";
+        memcpy(fileDetails, receiveData(bigValue, peerHandlingSocket), bigValue);
+
+        cout<<"Got from client: "<<fileDetails<<"\n";
+        */
     }
 
     close(trackerSocket);

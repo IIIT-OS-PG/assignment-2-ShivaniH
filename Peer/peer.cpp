@@ -6,15 +6,19 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <fstream>
 #include <algorithm>
+#include <openssl/sha.h>
+#include <cstring>
 
 /*-------------------------------------
 |   Vani-chan's header files          |
 -------------------------------------*/
 
 #include "../vaninet.hpp"      //POSIX headers are in here
+#include "../filehandling.hpp"
 
+#define _512KB 524288
+#define maxSHA 655360   // max number of chars in hash (max chunks = 32768), considering max file size = 16 GB
 using namespace std;
 
 /*----------------------------------------------------------------------------------------------------------------------------------------
@@ -65,6 +69,8 @@ int main(int argc, char** argv)
         ++i;
     }
 
+    fin.close();
+
     cout<<"Read tracker info. . . \n";
 
     trackersIP = trackerInfo[0].first.c_str();
@@ -104,29 +110,117 @@ int main(int argc, char** argv)
     }
 
     /**
+     * Main user command input loop
+    /*
+
+    /*
+    string userInput = "";
+    cin>>userInput;
+    while(userInput != "logout")
+    {
+        //use switch to check which command matches the start of the userInput -- how to match?
+        cin>>userInput;
+    }
+
+    */
+
+    /**
      * Talking to Tracker
      */ 
 
-    char *ptr = (char*)malloc(sizeof(char)*16);
-    ptr = "peer says meow\n"; 
+    char *buffer;
+    long long int fileSize = 0;
+    long long int *ptrToFileSize = &fileSize;
 
+    //buffer = putFileInBuffer(buffer, ptrToFileSize, "countOfMonteCristo.txt");    //You'll need to put the file in a buffer only when sending it, not to calculate SHA1
+
+    //cout<<"file size is "<<fileSize<<"\n";
+    //cout<<"contents of file : \n"<<buffer;
+    //cout<<"\n";
+
+    /**
+     * Calculate SHA1
+     */
+
+    FILE *ptr = fopen("CountOfMonteCristo.txt","r");
+
+    if(ptr == NULL) 
+    {
+        fputs ("File error",stderr);
+        exit(1);
+    }
+
+    fseek(ptr , 0 , SEEK_END);
+    fileSize = ftell(ptr);
+    rewind(ptr);
+
+    //cout<<"unsigned char size  = "<<sizeof(unsigned char)<<"\n";
+ 
+    //char *fiveTwelveBuffer = (char*)malloc(sizeof(char)*_512KB);
+    //unsigned char *hashOfChunk = (unsigned char*)malloc(sizeof(unsigned char)*20);
+    char fiveTwelveBuffer[_512KB];
+    unsigned char hashOfChunk[SHA_DIGEST_LENGTH];
+    long long int numRemaining = fileSize;
+    //unsigned char* sha1MD = (unsigned char*)malloc(sizeof(unsigned char)*maxSHA);
+    unsigned char sha1MD[maxSHA];
+
+    //unsigned char* ptrToSHA1MD = sha1MD;
+    long int bytesRead;
+
+    /*
+    SHA_CTX ctx;
+    SHA1_Init(&ctx);
+    */
+
+    memset(fiveTwelveBuffer, 0, _512KB);
+    memset(hashOfChunk, 0, 20);
+    memset(sha1MD, 0, maxSHA);
+
+    int shaIndex = 0;
+
+    while(numRemaining > 0)
+    {
+        memset(fiveTwelveBuffer, 0, _512KB);
+        bytesRead = fread(fiveTwelveBuffer, 1, _512KB, ptr);
+        if(bytesRead != _512KB)
+        {
+            SHA1((unsigned char *)fiveTwelveBuffer, bytesRead, hashOfChunk);
+        }
+        else SHA1((unsigned char *)fiveTwelveBuffer, _512KB, hashOfChunk);
+        printf("Hash of chunk is : ");
+        for(int i = 0; i < SHA_DIGEST_LENGTH; ++i, ++shaIndex)
+        {
+            printf("%02x",hashOfChunk[i]);
+            sha1MD[shaIndex] = hashOfChunk[i];
+        }
+        printf("\n");
+        //printf("hash collected till now %02x \n", ptrToSHA1MD);
+        //memcpy(sha1MD, hashOfChunk, 20);
+        //ptrToSHA1MD += 20;
+        numRemaining -= _512KB;
+    }
+
+    fclose(ptr);
+
+    printf("SHA1 for the file is ");
+    for(int i = 0; i < shaIndex; ++i)
+    {
+        printf("%02x",sha1MD[i]);
+    }
+    printf("\n");
+    //cout<<"SHA1 for the file is "<<(sha1MD & 0xFF)<<"\n";
+    
+    /*
+    UNCOMMENT THIS WHEN NEEDED
     cout<<"Going to send data now...\n";
     cout<<"Peer ip = "<<peerIP<<" peer port = "<<ntohs(peerAddress.sin_port)<<"\n";
     
-    int sendLength = 16;
-    int bytesSent;
-    while(sendLength > 0)
+    if(sendData(buffer, fileSize, peerSocket) == -1)
     {
-        cout<<"got in here\n";
-        bytesSent = send(peerSocket, ptr, sizeof(ptr), 0);
-        if(bytesSent < 1)
-        {
-            perror("Couldn't send any data!");   
-        }
-        cout<<bytesSent<<" amount of data sent to tracker\n";
-        ptr += bytesSent;
-        sendLength -= bytesSent; 
+        perror("Couldn't send any data!"); 
+        exit(1);
     }
+    */
             
     close(peerSocket);
     return 0;

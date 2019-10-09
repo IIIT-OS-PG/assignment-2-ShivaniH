@@ -78,24 +78,26 @@ int sendData(char *buffer, long long int sendLength, int sendersSocket)
 char* receiveData(long long int bufferSize, int receiversSocket)
 {
     char *bufferStorage = (char*)malloc(sizeof(char)*bufferSize);
+    //char bufferStorage[bufferSize];
     long long int bytesRecvd = 1;     //just an initial value
     long long int totalBytes = 0;
 
-    char *buffer = bufferStorage;
+    char *buffer;
+    buffer = bufferStorage;
 
     while(bytesRecvd > 0 && totalBytes <= bufferSize)
     {
-        bytesRecvd = recv(receiversSocket, buffer, sizeof(buffer), 0);
+        bytesRecvd = TEMP_FAILURE_RETRY(recv(receiversSocket, bufferStorage, 8, 0));
         if(bytesRecvd == -1)
         {
             perror("Error while receiving data ");
             exit(1);
         }
-        buffer += bytesRecvd;
+        bufferStorage += bytesRecvd;
         //cout<<"got "<<bytesRecvd<<" bytes\n";
         totalBytes += bytesRecvd;
         //cout<<"received these bytes: "<<bufferStorage<<"\n";
     }
 
-    return bufferStorage;
+    return buffer;
 }

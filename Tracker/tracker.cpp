@@ -16,6 +16,8 @@
 
 #include "../vaninet.hpp"      //POSIX headers are in here
 
+#define bigValue 1000000     // Intentionally reduced value to get rid of bad address error
+
 using namespace std;
 
 /*----------------------------------------------------------------------------------------------------------------------------------------
@@ -102,8 +104,8 @@ int main(int argc, char** argv)
      * Get details of a file from a peer(client) -- Peer shares a file
      */
 
-    long long int bigValue = numeric_limits<long long int>::max();
     char *fileDetails = (char*)malloc(sizeof(char)*bigValue);
+    //char fileDetails[bigValue];
 
     while(true)
     {
@@ -121,13 +123,13 @@ int main(int argc, char** argv)
         //The buffersize that you send to the receiveData function depends on what kind of request you're handling
 
         /*
-        UNCOMMENT THIS LATER
+        UNCOMMENT THIS LATER*/
         cout<<"Going to receive data now...\n";
 
         memcpy(fileDetails, receiveData(bigValue, peerHandlingSocket), bigValue);
 
         cout<<"Got from client: "<<fileDetails<<"\n";
-        */
+       /* */
     }
 
     close(trackerSocket);

@@ -1,4 +1,5 @@
 #include<iostream>
+#include <cstring>
 
 /*-------------------------------------
 | POSIX header files              |

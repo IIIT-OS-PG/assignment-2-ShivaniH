@@ -18,7 +18,7 @@
 #include "../filehandling.hpp"
 
 #define _512KB 524288
-#define maxSHA 655360   // max number of chars in hash (max chunks = 32768), considering max file size = 16 GB
+#define maxSHA 655360   // max number of chars in hash (max chunks = 32768), considering max file size = 16 GB --> Or will it be 8GB, cause of the *2 done later?
 using namespace std;
 
 /*----------------------------------------------------------------------------------------------------------------------------------------
@@ -159,7 +159,7 @@ int main(int argc, char** argv)
     //char *fiveTwelveBuffer = (char*)malloc(sizeof(char)*_512KB);
     //unsigned char *hashOfChunk = (unsigned char*)malloc(sizeof(unsigned char)*20);
     char fiveTwelveBuffer[_512KB];
-    unsigned char hashOfChunk[SHA_DIGEST_LENGTH];
+    unsigned char hashOfChunk[SHA_DIGEST_LENGTH*2];
     long long int numRemaining = fileSize;
     //unsigned char* sha1MD = (unsigned char*)malloc(sizeof(unsigned char)*maxSHA);
     unsigned char sha1MD[maxSHA];
@@ -173,7 +173,7 @@ int main(int argc, char** argv)
     */
 
     memset(fiveTwelveBuffer, 0, _512KB);
-    memset(hashOfChunk, 0, 20);
+    memset(hashOfChunk, 0, 40);
     memset(sha1MD, 0, maxSHA);
 
     int shaIndex = 0;
@@ -188,12 +188,14 @@ int main(int argc, char** argv)
         }
         else SHA1((unsigned char *)fiveTwelveBuffer, _512KB, hashOfChunk);
         printf("Hash of chunk is : ");
-        for(int i = 0; i < SHA_DIGEST_LENGTH; ++i, ++shaIndex)
+        for(int i = 0; i < SHA_DIGEST_LENGTH; ++i, shaIndex+=2)
         {
             printf("%02x",hashOfChunk[i]);
-            sha1MD[shaIndex] = hashOfChunk[i];
+            //sha1MD[shaIndex] = hashOfChunk[i];
+            sprintf( (char*)&sha1MD[shaIndex], "%02x",hashOfChunk[i]);
         }
         printf("\n");
+        sha1MD[shaIndex]= '\0';
         //printf("hash collected till now %02x \n", ptrToSHA1MD);
         //memcpy(sha1MD, hashOfChunk, 20);
         //ptrToSHA1MD += 20;
@@ -205,22 +207,23 @@ int main(int argc, char** argv)
     printf("SHA1 for the file is ");
     for(int i = 0; i < shaIndex; ++i)
     {
-        printf("%02x",sha1MD[i]);
+        //printf("%02x",sha1MD[i]);
+        cout<<sha1MD[i];
     }
     printf("\n");
     //cout<<"SHA1 for the file is "<<(sha1MD & 0xFF)<<"\n";
     
     /*
-    UNCOMMENT THIS WHEN NEEDED
+    UNCOMMENT THIS WHEN NEEDED*/
     cout<<"Going to send data now...\n";
     cout<<"Peer ip = "<<peerIP<<" peer port = "<<ntohs(peerAddress.sin_port)<<"\n";
     
-    if(sendData(buffer, fileSize, peerSocket) == -1)
+    if(sendData((char*)sha1MD, shaIndex, peerSocket) == -1)
     {
         perror("Couldn't send any data!"); 
         exit(1);
     }
-    */
+   /* */
             
     close(peerSocket);
     return 0;

@@ -14,6 +14,7 @@
 #include <netinet/in.h>
 #include <netdb.h>  //has getaddrinfo()
 #include <arpa/inet.h>  //for inet_pton
+#include <pthread.h>
 
 /*-------------------------------------
 |   Vani-chan's header files          |

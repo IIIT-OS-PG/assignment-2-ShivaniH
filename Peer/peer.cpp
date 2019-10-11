@@ -2,13 +2,12 @@
 | Standard header files              |
 -------------------------------------*/
 
-#include <iostream>
 #include <string>
 #include <vector>
 #include <map>
 #include <algorithm>
 #include <openssl/sha.h>
-#include <cstring>
+#include <cstdlib>
 
 /*-------------------------------------
 |   Vani-chan's header files          |
@@ -36,8 +35,8 @@ pthread_t threads[MAX_NUM_THREADS];
 |                              STRUCTS TO SEND DATA TO THREAD ROUTINES                               |
 ----------------------------------------------------------------------------------------------------*/
 struct shareFileData {
-    string file_path;
-    string group_id;
+    char file_path[256];
+    char group_id[256];
     int socketFD;
     char *peerIP;
     char *peerPort;
@@ -50,16 +49,19 @@ struct shareFileData {
 void getCommandParams()
 {
     int space;
-    space = request.find(' ');
-    command = request.substr(0, space);
-    request.erase(0, space);
+    space = userInput.find(' ');
+    //cout<<"space pos = "<<space<<"\n";
+    command = userInput.substr(0, space);
+    userInput.erase(0, space+1);
+
+    //cout<<"userinput modified to "<<userInput<<"\n";
 
     int i = 0;
-    while(request.size() != 0 && i < 3)
+    while(userInput.size() != 0 && i < 3)
     {
-        space = request.find(' ');
-        params[i] = request.substr(0, space);
-        request.erase(0, space);
+        space = userInput.find(' ');
+        params[i] = userInput.substr(0, space);
+        userInput.erase(0, space+1);
         ++i;
     }
 }
@@ -77,8 +79,9 @@ void *shareFile(void* shareData)
 {   
     struct shareFileData *reqData = (struct shareFileData*) shareData;
 
-    string filePath = reqData->file_path;
-    string groupID = reqData->group_id;
+    char *filePath = reqData->file_path;
+    //cout<<"size of filepath ptr = "<<strlen(filePath)<<"\n";
+    char *groupID = reqData->group_id;
     int sockFD = reqData->socketFD;
     char *peerIP = reqData->peerIP;
     char *peerPort = reqData->peerPort;
@@ -91,8 +94,8 @@ void *shareFile(void* shareData)
         perror("Couldn't send command name!"); 
         exit(1);
     }
-
-    if( sendData((char *)filePath.c_str(), filePath.length() + 1, sockFD) == -1)  //send its path/name
+    
+    if( sendData(filePath, strlen(filePath), sockFD) == -1)  //send its path/name
     {
         perror("Couldn't send any file name!"); 
         exit(1);
@@ -103,7 +106,9 @@ void *shareFile(void* shareData)
      */
 
     long long int fileSize = 0;
-    FILE *ptr = fopen((const char*)filePath.c_str(),"r");
+    FILE *ptr = fopen(filePath,"r");
+
+    cout<<"Now trying to open "<<filePath<<"\n";
 
     if(ptr == NULL) 
     {
@@ -115,8 +120,10 @@ void *shareFile(void* shareData)
     fileSize = ftell(ptr);
     rewind(ptr);
 
-    char *fileSizeString = (char*)fileSize;
-    if( sendData(fileSizeString, 100, sockFD) == -1 )     //send file size
+    string fileSizeString;
+    fileSizeString = to_string(fileSize);
+
+    if( sendData((char*)fileSizeString.c_str(), fileSizeString.length(), sockFD) == -1 )     //send file size
     {
         perror("Couldn't send any file size!"); 
         exit(1);
@@ -156,12 +163,13 @@ void *shareFile(void* shareData)
     memset(hashOfChunk, 0, 40);
     memset(sha1MD, 0, maxSHA);
 
-    int shaIndex = 0;
+    long long int shaIndex = 0;
 
     while(numRemaining > 0)
     {
         memset(fiveTwelveBuffer, 0, _512KB);
         bytesRead = fread(fiveTwelveBuffer, 1, _512KB, ptr);
+        cout << "VC: " << bytesRead << "\n";
         if(bytesRead != _512KB)
         {
             SHA1((unsigned char *)fiveTwelveBuffer, bytesRead, hashOfChunk);
@@ -175,14 +183,16 @@ void *shareFile(void* shareData)
             sprintf( (char*)&sha1MD[shaIndex], "%02x",hashOfChunk[i]);
         }
         printf("\n");
-        sha1MD[shaIndex]= '\0';
         //printf("hash collected till now %02x \n", ptrToSHA1MD);
         //memcpy(sha1MD, hashOfChunk, 20);
         //ptrToSHA1MD += 20;
         numRemaining -= _512KB;
     }
 
-    fclose(ptr);
+    sha1MD[shaIndex]= '\0';
+    ++shaIndex;
+
+    //fclose(ptr);
 
     printf("SHA1 for the file is ");
     for(int i = 0; i < shaIndex; ++i)
@@ -193,14 +203,20 @@ void *shareFile(void* shareData)
     printf("\n");
 
     cout<<"Going to send the SHA1 hash to the tracker now...\n";
+
+    cout<<"shaIndex = "<<shaIndex<<"\n";
     
-    if(sendData((char*)sha1MD, shaIndex, sockFD) == -1)
+    if(sendData((char*)sha1MD, maxSHA, sockFD) == -1)
     {
         perror("Couldn't send SHA1 to tracker!"); 
         exit(1);
     }
 
     close(sockFD);
+
+    void *exitStatus = 0;
+
+    pthread_exit(exitStatus);
 }
 
 /*----------------------------------------------------------------------------------------------------------------------------------------
@@ -218,6 +234,9 @@ void *sendFile()
     //cout<<"file size is "<<fileSize<<"\n";
     //cout<<"contents of file : \n"<<buffer;
     //cout<<"\n";
+
+    void *exitStatus = 0;
+    pthread_exit(exitStatus);
 }
 
 
@@ -281,7 +300,14 @@ int main(int argc, char** argv)
     */
 
     userInput = "";
-    cin>>userInput;
+
+    struct shareFileData *SFD;
+
+
+    //cin>>userInput;
+    //cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, userInput);
+    cout<<"user input is "<<userInput<<"\n";
     while(userInput != "logout")
     {
         // Connect to either one of the trackers, before every request
@@ -322,6 +348,8 @@ int main(int argc, char** argv)
         }
 
         getCommandParams();
+
+        cout<<"command is "<<command<<"\n";
 
         if(command == "create_user")
         {
@@ -364,12 +392,16 @@ int main(int argc, char** argv)
             string filePath = params[0];
             string groupID = params[1];
 
-            struct shareFileData *SFD;
-            SFD->file_path = filePath;
-            SFD->group_id = groupID;
+            cout<<"param0 = "<<filePath<<"\n";
+            cout<<"param1 = "<<params[1]<<"\n";
+            SFD = (struct shareFileData*)malloc(sizeof(struct shareFileData));
+            strcpy(SFD->file_path, filePath.c_str());
+            strcpy(SFD->group_id, groupID.c_str());
             SFD->peerIP = (char*)peerIP;
-            SFD->peerPort = (char*)peerPort;
+            SFD->peerPort = (char*)to_string(peerPort).c_str();
             SFD->socketFD = peerSocket;
+
+            cout<<"OK TILL HERE\n";
 
             if ( pthread_create(&threads[i], NULL, shareFile, (void*)SFD) < 0 )
             {
@@ -411,5 +443,7 @@ int main(int argc, char** argv)
     }
 
     ***/
+
+    free(SFD);
     return 0;
 }

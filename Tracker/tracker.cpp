@@ -2,13 +2,11 @@
 | Standard header files              |
 -------------------------------------*/
 
-#include <iostream>
 #include <string>
 #include <vector>
 #include <map>
 #include <fstream>
 #include <algorithm>
-#include <string.h>
 
 /*-------------------------------------
 |   Vani-chan's header files          |
@@ -86,9 +84,23 @@ void *serviceRequests(void* socketFD)
     else if(command == "upload_file")
     {
         char fileName[100], fileSHA[maxSHA], peerIP[16], groupID[20], peerPort[10], fileSize[30];
-
         memcpy(fileName, receiveData(100, sockFD), 100);
+        cout<<"fileName = "<<fileName<<"\n";
+        memcpy(fileSize, receiveData(30, sockFD), 30);
+        cout<<"fileSize = "<<fileSize<<"\n";
+        memcpy(peerIP, receiveData(16, sockFD), 16);
+        cout<<"peerIP = "<<peerIP<<"\n";
+        memcpy(peerPort, receiveData(10, sockFD), 10);
+        cout<<"peerPort = "<<peerPort<<"\n";
+        memcpy(fileSHA, receiveData(maxSHA, sockFD), maxSHA);
+        cout<<"fileSHA = "<<fileSHA<<"\n";
+        //memcpy(groupID, receiveData(100, sockFD), 100);
 
+        cout<<"Got file name : "<<fileName<<"\n";
+        cout<<"Got file size : "<<fileSize<<"\n";
+        cout<<"Got peerIP : "<<peerIP<<"\n";
+        cout<<"Got peerPort : "<<peerPort<<"\n";
+        cout<<"Got file SHA : "<<fileSHA<<"\n";
     }
     else if(command == "download_file​")
     {
@@ -104,6 +116,7 @@ void *serviceRequests(void* socketFD)
     }
     else {
        cout<<"Invalid command received by tracker!\n";
+       cout<<"Tracker got command = "<<command<<"\n";
        exit(1);
     }
 
@@ -205,6 +218,7 @@ int main(int argc, char** argv)
             perror("From tracker: Couldn't create a thread for handling request");
             exit(1);
         }
+        pthread_join(threads[i], NULL);
 
         //TODO: How to QUIT?
 
@@ -222,6 +236,7 @@ int main(int argc, char** argv)
         */
     }
 
+    free(fileDetails);
     close(trackerSocket);
     return 0;
 }

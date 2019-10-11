@@ -20,7 +20,7 @@ pair<int, struct sockaddr_in> setUpSocket(const char *IP, int port)
 
     if(port <= 1024)
     {
-        perror("Cannot use a port number <= 1024 \n");
+        perror("Cannot use a port number <= 1024 ");
         perror("Assigning another port . . . ");
         port = 0;   //So that the system selects the lowest unused port automatically
     }
@@ -29,14 +29,14 @@ pair<int, struct sockaddr_in> setUpSocket(const char *IP, int port)
     int socketRet = socket(AF_INET, SOCK_STREAM, 0);
     if(socketRet == -1)
     {
-        perror("Could not create socket!\n");
+        perror("Could not create socket!");
         exit(1);
     }
 
     int bindSuccess = bind(socketRet, (const sockaddr *)&address, sizeof(sockaddr_in));
     if(bindSuccess < -1)
     {
-        perror("Could not bind socket to specified address!\n");
+        perror("Could not bind socket to specified address!");
         exit(1);
     }
 
@@ -53,11 +53,17 @@ int sendData(char *buffer, long long int sendLength, int sendersSocket)
     //cout<<"send length is "<<sendLength<<"\n";
     char *ptrToBuffer = buffer;
 
+    //cout << "VC: " << buffer << " " << sendLength << "\n";
+
+    //PKB
+    send(sendersSocket, &sendLength, sizeof(long long int), 0);
+
     //cout<<"sending these bytes \n"<<buffer<<"\n";
     long long int bytesSent;
     while(sendLength > 0)
     {
-        bytesSent = send(sendersSocket, ptrToBuffer, sizeof(ptrToBuffer), 0);
+        bytesSent = send(sendersSocket, ptrToBuffer, sendLength, 0);
+        //cout << bytesSent << "\n";
         if(bytesSent < 1)
         {
             return(-1);  
@@ -67,7 +73,7 @@ int sendData(char *buffer, long long int sendLength, int sendersSocket)
         ptrToBuffer += bytesSent;
         sendLength -= bytesSent; 
     }
-
+    //cout << "VC Final\n";
     return 0;
 }
 
@@ -77,6 +83,10 @@ int sendData(char *buffer, long long int sendLength, int sendersSocket)
 
 char* receiveData(long long int bufferSize, int receiversSocket)
 {
+    //PKB
+    recv(receiversSocket, &bufferSize, sizeof(long long int), 0);
+    //cout << "PKB: " << bufferSize << "\n";
+    
     char *bufferStorage = (char*)malloc(sizeof(char)*bufferSize);
     //char bufferStorage[bufferSize];
     long long int bytesRecvd = 1;     //just an initial value
@@ -85,9 +95,10 @@ char* receiveData(long long int bufferSize, int receiversSocket)
     char *buffer;
     buffer = bufferStorage;
 
-    while(bytesRecvd > 0 && totalBytes <= bufferSize)
+    while(bytesRecvd > 0 && totalBytes < bufferSize)
     {
-        bytesRecvd = TEMP_FAILURE_RETRY(recv(receiversSocket, bufferStorage, 8, 0));
+        bytesRecvd = recv(receiversSocket, bufferStorage, bufferSize, 0);
+        //cout << bytesRecvd << "\n";
         if(bytesRecvd == -1)
         {
             perror("Error while receiving data ");
@@ -96,9 +107,10 @@ char* receiveData(long long int bufferSize, int receiversSocket)
         bufferStorage += bytesRecvd;
         //cout<<"got "<<bytesRecvd<<" bytes\n";
         totalBytes += bytesRecvd;
+        //cout << "TB: " << totalBytes << "\n";
         //cout<<"received these bytes: "<<bufferStorage<<"\n";
     }
-
+    //cout << "VC: " << buffer << "\n";
     return buffer;
 }
  

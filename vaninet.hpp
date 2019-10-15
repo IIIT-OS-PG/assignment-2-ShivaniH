@@ -20,8 +20,12 @@
 |   Vani-chan's header files          |
 -------------------------------------*/
 
-std::pair<int, struct sockaddr_in> setUpSocket(const char *trackersIP, int trackerNum);
+using namespace std;
+
+std::pair<int, struct sockaddr_in> setUpSocket(const char *IP, int port);
 
 int sendData(char *buffer, long long int bufferSize, int sendersSocket);
 
 char* receiveData(long long int bufferSize, int receiversSocket);
+
+void dump(string s);

@@ -26,10 +26,10 @@ pthread_t threads[MAX_NUM_THREADS];
  * Data structs for tracking data
  */
 
-map<string, vector<string>> fileToPeerMap;  //which peers have which files
-map<string, vector<string>> peerToGroupMap;     //which groups a particular peer is present in
+map<string, vector<pair<string,string>>> fileToPeerMap;  //which peers have which files
+map<string, vector<string>> fileToFileInfoMap;
+map<vector<string>, vector<string>> peerToGroupMap;     //which groups a particular peer is present in
 //make another map for usernames and passwords?
-
 
 /*----------------------------------------------------------------------------------------------------------------------------------------
                                    |       THREAD FOR HANDLING REQUESTS FROM PEERS        |
@@ -85,25 +85,156 @@ void *serviceRequests(void* socketFD)
     {
         char fileName[100], fileSHA[maxSHA], peerIP[16], groupID[20], peerPort[10], fileSize[30];
         memcpy(fileName, receiveData(100, sockFD), 100);
-        cout<<"fileName = "<<fileName<<"\n";
+        //cout<<"fileName = "<<fileName<<"\n";
         memcpy(fileSize, receiveData(30, sockFD), 30);
-        cout<<"fileSize = "<<fileSize<<"\n";
+        //cout<<"fileSize = "<<fileSize<<"\n";
         memcpy(peerIP, receiveData(16, sockFD), 16);
-        cout<<"peerIP = "<<peerIP<<"\n";
+        //cout<<"peerIP = "<<peerIP<<"\n";
         memcpy(peerPort, receiveData(10, sockFD), 10);
-        cout<<"peerPort = "<<peerPort<<"\n";
+        //cout<<"peerPort = "<<peerPort<<"\n";
         memcpy(fileSHA, receiveData(maxSHA, sockFD), maxSHA);
-        cout<<"fileSHA = "<<fileSHA<<"\n";
+        //cout<<"fileSHA = "<<fileSHA<<"\n";
         //memcpy(groupID, receiveData(100, sockFD), 100);
 
         cout<<"Got file name : "<<fileName<<"\n";
         cout<<"Got file size : "<<fileSize<<"\n";
         cout<<"Got peerIP : "<<peerIP<<"\n";
         cout<<"Got peerPort : "<<peerPort<<"\n";
-        cout<<"Got file SHA : "<<fileSHA<<"\n";
+        cout<<"Got file SHA : "<<fileSHA<<"\n\n";
+
+        vector<pair<string, string>> peerData;
+        vector<string> fileData;
+
+        pair<string, string> onePeer;
+        onePeer.first = peerIP;
+        onePeer.second = peerPort;
+
+        fileData.push_back(fileSize);
+        fileData.push_back(fileSHA);
+
+        if(fileToPeerMap.find(string(fileName)) == fileToPeerMap.end())
+        {
+            peerData.push_back(onePeer);
+            fileToPeerMap.insert(make_pair(string(fileName), peerData));
+        }
+        else {
+            peerData = fileToPeerMap[string(fileName)];
+            /*
+            cout<<"Old peer data = ";
+            for(int k = 0; k < peerData.size(); ++k)
+            {
+                cout<<peerData[k].first<<" "<<peerData[k].second<<"\n";
+            }
+            */
+            peerData.push_back(onePeer);
+            /*
+            cout<<"New peer data = ";
+            for(int k = 0; k < peerData.size(); ++k)
+            {
+                cout<<peerData[k].first<<" "<<peerData[k].second<<"\n";
+            }
+            */
+            fileToPeerMap[string(fileName)] = peerData;
+        }
+        fileToFileInfoMap.insert(make_pair(string(fileName), fileData));
+        //cout<<"inserted into fileinfo map\n";
+
+
     }
-    else if(command == "download_file​")
+    else if(command == "download_file")
     {
+
+        // peer wants a list of other peers who have a particular file
+        char fileName[100];
+
+        memset(fileName, '\0', 100);
+        memcpy(fileName, receiveData(100, sockFD), 100);
+
+        //cout<<"dump for filename in tracker:\n";
+        //dump(fileName);
+
+        string fileNameStr = string(fileName);
+        //cout<<"map size is "<<fileToFileInfoMap.size()<<"\n";
+        map<string, vector<string>>::iterator it = fileToFileInfoMap.begin();
+        //cout<<it->first<<"\n";
+
+        /*
+        cout<<fileToPeerMap.size()<<" peers have the requested file\n";
+        cout<<"List of peers who have "<<fileNameStr<<" is : \n";
+
+        for(int i = 0; i < fileToPeerMap.size(); ++i)
+        {
+            cout<<fileToPeerMap[fileNameStr][i].first<<" "<<fileToPeerMap[fileNameStr][i].second<<"\n";
+        }
+        */
+
+        //cout<<"received file is = "<<fileNameStr<<"\n";
+
+        if(fileToFileInfoMap.find(fileNameStr) != fileToFileInfoMap.end())
+        {
+            vector<string> fileData = fileToFileInfoMap[fileNameStr];
+            vector<pair<string,string>> peerData = fileToPeerMap[fileNameStr];
+
+            char listOfPeers[520];  // assuming a maximum of 20 peers
+            int numPeers = peerData.size();
+
+            char *insertPos = listOfPeers;
+            int numBytes;
+            for(int i = 0; i < numPeers; ++i)
+            {
+                numBytes = peerData[i].first.length();
+                memcpy(insertPos, peerData[i].first.c_str(), numBytes);
+                insertPos += numBytes;
+
+                *insertPos = ':';
+                ++insertPos;
+
+                numBytes = peerData[i].second.length();
+                memcpy(insertPos, peerData[i].second.c_str(), numBytes);
+                insertPos += numBytes;
+
+                *insertPos = ' ';
+                ++insertPos;
+            }
+
+            char sendSHA[maxSHA], sendFileSize[30];
+
+            memset(sendSHA, '\0', maxSHA);
+            memset(sendFileSize, '\0', 30);
+
+            memcpy(sendSHA, fileData[1].c_str(), fileData[1].length());
+            memcpy(sendFileSize, fileData[0].c_str(), fileData[0].length());
+            //cout<<"VC : "<<fileData[1]<<"\n";
+            //cout<<"length = "<<fileData[1].length()<<"\n";
+            if( sendData(sendSHA, maxSHA, sockFD) == -1)
+            {
+                perror("Couldn't send file SHA!");
+                exit(1);
+            }
+
+            cout<<"\n\nSent fileSHA to peer\n";
+
+            usleep(500);
+
+            if( sendData(sendFileSize, 30, sockFD) == -1)
+            {
+                perror("Couldn't send file size!");
+                exit(1);
+            }
+
+            cout<<"Sent filesize to peer\n";
+
+            if( sendData(listOfPeers, 520, sockFD) == -1)
+            {
+                perror("Couldn't send list of peers!");
+                exit(1);
+            }
+
+            cout<<"sent peer list to requesting peer\n\n";
+        }
+        else{
+            cout<<"The requested file has not been shared by any peer\n";
+        }
 
     }
     else if(command == "Show_downloads")
@@ -120,6 +251,7 @@ void *serviceRequests(void* socketFD)
        exit(1);
     }
 
+    cout<<"Tracker's request handling thread has finished\n";
     pthread_exit(NULL);
 
 }
@@ -197,7 +329,7 @@ int main(int argc, char** argv)
      * Get details of a file from a peer(client) -- Peer shares a file
      */
 
-    char *fileDetails = (char*)malloc(sizeof(char)*bigValue);
+    //char *fileDetails = (char*)malloc(sizeof(char)*bigValue);
     //char fileDetails[bigValue];
 
     while(true)
@@ -213,30 +345,21 @@ int main(int argc, char** argv)
 
         int *peerHandlingSocketPTR = &peerHandlingSocket;
 
-        if ( pthread_create(&threads[i], NULL, serviceRequests, (void*)peerHandlingSocketPTR) < 0 )
+        if ( pthread_create(&threads[0], NULL, serviceRequests, (void*)peerHandlingSocketPTR) < 0 )
         {
             perror("From tracker: Couldn't create a thread for handling request");
             exit(1);
         }
-        pthread_join(threads[i], NULL);
+        //pthread_join(threads[0], NULL);
 
         //TODO: How to QUIT?
 
-        //TODO: Make a separate thread here to receive and handle requests
+        //DONE: Make a separate thread here to receive and handle requests
 
         //The buffersize that you send to the receiveData function depends on what kind of request you're handling
-
-        /*
-        UNCOMMENT THIS LATER
-        cout<<"Going to receive data now...\n";
-
-        memcpy(fileDetails, receiveData(bigValue, peerHandlingSocket), bigValue);
-
-        cout<<"Got from client: "<<fileDetails<<"\n";
-        */
     }
 
-    free(fileDetails);
+    //free(fileDetails);
     close(trackerSocket);
     return 0;
 }

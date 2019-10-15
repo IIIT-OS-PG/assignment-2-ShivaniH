@@ -2,7 +2,7 @@
 
 char* putFileInBuffer(char *buffer, long long int *fileSizePtr, string filename)
 {
-    FILE *ptr = fopen((const char*)filename.c_str(),"r");
+    FILE *ptr = fopen(filename.c_str(),"r");
 
     if(ptr == NULL) 
     {
@@ -33,4 +33,25 @@ char* putFileInBuffer(char *buffer, long long int *fileSizePtr, string filename)
 
     fclose(ptr);
     return buffer;
+}
+
+void putBufferInAFile(char *buffer, long long int fileSize, string fileName)
+{
+    FILE *filePointer = fopen(fileName.c_str(), "a");
+
+    if(filePointer == NULL) 
+    {
+        fputs ("File error",stderr);
+        exit(1);
+    }
+
+    int result = fwrite(buffer, 1, fileSize, filePointer);
+
+    if (result != fileSize) 
+    {
+        fputs("Writing error",stderr); 
+        exit(1);
+    }
+
+    fclose(filePointer);
 }

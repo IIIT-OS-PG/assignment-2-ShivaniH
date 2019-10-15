@@ -7,6 +7,17 @@
 
 using namespace std;
 
+void dump( string s)
+{
+  for (unsigned int n=0; n<s.length(); ++n)
+  {
+    char c = s[n];
+    cout << (int) c << ",";
+  }
+  cout << endl;
+
+}
+
 /**
  * SETTING UP SOCKET
  */
@@ -53,7 +64,7 @@ int sendData(char *buffer, long long int sendLength, int sendersSocket)
     //cout<<"send length is "<<sendLength<<"\n";
     char *ptrToBuffer = buffer;
 
-    //cout << "VC: " << buffer << " " << sendLength << "\n";
+    //cout << "VC: " << buffer << "\n";
 
     //PKB
     send(sendersSocket, &sendLength, sizeof(long long int), 0);
@@ -98,7 +109,7 @@ char* receiveData(long long int bufferSize, int receiversSocket)
     while(bytesRecvd > 0 && totalBytes < bufferSize)
     {
         bytesRecvd = recv(receiversSocket, bufferStorage, bufferSize, 0);
-        //cout << bytesRecvd << "\n";
+        //cout << "bytes received = " << bytesRecvd << "\n";
         if(bytesRecvd == -1)
         {
             perror("Error while receiving data ");
@@ -108,7 +119,9 @@ char* receiveData(long long int bufferSize, int receiversSocket)
         //cout<<"got "<<bytesRecvd<<" bytes\n";
         totalBytes += bytesRecvd;
         //cout << "TB: " << totalBytes << "\n";
-        //cout<<"received these bytes: "<<bufferStorage<<"\n";
+        //cout<<"received these bytes: "<<buffer<<"\n";
+        //cout<<"dump for receiver buffer: \n";
+        //dump(string(buffer));
     }
     //cout << "VC: " << buffer << "\n";
     return buffer;

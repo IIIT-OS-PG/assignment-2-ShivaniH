@@ -251,7 +251,7 @@ void *serviceRequests(void* socketFD)
        exit(1);
     }
 
-    cout<<"Tracker's request handling thread has finished\n";
+    cout<<"Tracker's request handling thread has finished\n\n";
     pthread_exit(NULL);
 
 }

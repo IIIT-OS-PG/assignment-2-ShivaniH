@@ -873,7 +873,77 @@ int main(int argc, char** argv)
 
             cout<<"\n\n"<<destPath<<" has been downloaded\n";
 
-            //VERIFY ITS INTEGRITY!!
+            // VERIFY ITS INTEGRITY
+
+            FILE *destfileCheck = fopen(destPath.c_str(), "r");
+
+            fseek(destfileCheck , 0 , SEEK_END);
+            long long int newDestfileSize = ftell (destfileCheck);
+            rewind(destfileCheck);
+
+            if(newDestfileSize != fileSizeValue)
+            {
+                cout<<"Something went wrong while downloading the file, file sizes don't match!\n";
+            }
+
+            char fiveTwelveBuffer[_512KB];
+            unsigned char hashOfChunk[SHA_DIGEST_LENGTH*2];
+            unsigned char sha1MD[maxSHA];
+            long int bytesRead;
+            long long int numRemaining = newDestfileSize;
+
+            memset(fiveTwelveBuffer, 0, _512KB);
+            memset(hashOfChunk, 0, 40);
+            memset(sha1MD, 0, maxSHA);
+
+            long long int shaIndex = 0;
+
+            while(numRemaining > 0)
+            {
+                memset(fiveTwelveBuffer, 0, _512KB);
+                bytesRead = fread(fiveTwelveBuffer, 1, _512KB, destfileCheck);
+                cout << "VC: " << bytesRead << "\n\n";
+                if(bytesRead != _512KB)
+                {
+                    SHA1((unsigned char *)fiveTwelveBuffer, bytesRead, hashOfChunk);
+                }
+                else SHA1((unsigned char *)fiveTwelveBuffer, _512KB, hashOfChunk);
+                printf("Hash of chunk is : ");
+                for(int i = 0; i < SHA_DIGEST_LENGTH; ++i, shaIndex+=2)
+                {
+                    printf("%02x",hashOfChunk[i]);
+                    //sha1MD[shaIndex] = hashOfChunk[i];
+                    sprintf( (char*)&sha1MD[shaIndex], "%02x",hashOfChunk[i]);      // 02x --> To write 2 nibbles in one byte
+                }
+                printf("\n");
+                //printf("hash collected till now %02x \n", ptrToSHA1MD);
+                //memcpy(sha1MD, hashOfChunk, 20);
+                //ptrToSHA1MD += 20;
+                numRemaining -= _512KB;
+            }
+
+            sha1MD[shaIndex]= '\0';
+            ++shaIndex;
+
+            int c;
+            for(c = 0; c < shaIndex; ++c)
+            {
+                if(sha1MD[c] != fileSHA[c])
+                {
+                    cout<<"\n\nSHA values don't match! The file is corrupt!\n";
+                    cout<<"Mismatch occurred at this point: \nIn SHA received from tracker, char at index "<<c<<" is "<<fileSHA[c]<<"\n";
+                    cout<<"In calculated SHA, char at index "<<c<<" is "<<sha1MD[c]<<"\n\n";
+                    break;
+                }
+            }
+
+            if(c == shaIndex)
+            {
+                cout<<"The SHA value received from the tracker matches the calculated SHA value!\n";
+            }
+
+            fclose(destfileCheck);
+
         }
         else if(command == "Show_downloads")
         {
